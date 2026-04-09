@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install yt-dlp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y yt-dlp jq
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: CLI help works
+        run: ./youtube-transcript-fetcher --help
+
+      - name: URL parsing sanity check
+        run: |
+          python - <<'PY'
+          from scripts.youtube_transcript_fetcher import extract_video_id
+
+          cases = {
+              'YDdKiQNw80c': 'YDdKiQNw80c',
+              'https://www.youtube.com/watch?v=YDdKiQNw80c': 'YDdKiQNw80c',
+              'https://youtu.be/YDdKiQNw80c': 'YDdKiQNw80c',
+              'https://www.youtube.com/shorts/YDdKiQNw80c': 'YDdKiQNw80c',
+          }
+          for raw, expected in cases.items():
+              actual = extract_video_id(raw)
+              assert actual == expected, (raw, actual, expected)
+          print('URL parsing OK')
+          PY
+
+      - name: Single video smoke test
+        run: |
+          ./youtube-transcript-fetcher --url 'https://www.youtube.com/watch?v=CCK276P_RYs' --output /tmp/youtube_transcript_fetcher_ci.json
+          jq -e '.items[0].has_transcript == true' /tmp/youtube_transcript_fetcher_ci.json >/dev/null
+          jq -e '(.items[0].transcript | length) > 1000' /tmp/youtube_transcript_fetcher_ci.json >/dev/null
+          jq -e '.items[0].title != "Unknown"' /tmp/youtube_transcript_fetcher_ci.json >/dev/null
+          jq -e '.items[0].channel != "Unknown"' /tmp/youtube_transcript_fetcher_ci.json >/dev/null
