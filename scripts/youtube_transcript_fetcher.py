@@ -403,9 +403,9 @@ def process_video(video_id: str, title: str = None, channel: str = None) -> Dict
 
     result = {
         "video_id": video_id,
-        "title": normalized_title or details.get("title") or "Unknown",
+        "title": normalized_title or details["title"],
         "url": f"https://www.youtube.com/watch?v={video_id}",
-        "channel": normalized_channel or details.get("channel") or "Unknown",
+        "channel": normalized_channel or details["channel"],
         "duration": details["duration"],
         "published": details["published"],
         "has_transcript": has_transcript,
